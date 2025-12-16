@@ -40,33 +40,50 @@ let diamonds = [];
 
 // Setup table with 2:1 ratio
 function setupTable() {
-    const edgePadding = 5;          // visible gap from canvas edge
+    const edgePadding = 5;
     const rail = table.railWidth;
 
-    const canvasW = canvas.width - (edgePadding + rail) * 2;
-    const canvasH = canvas.height - (edgePadding + rail) * 2;
+    // Usable canvas area INSIDE rails + padding
+    const usableW = canvas.width  - 2 * (edgePadding + rail);
+    const usableH = canvas.height - 2 * (edgePadding + rail);
 
-    if (canvasW >= canvasH) {
-        // Landscape
-        table.width = canvasW;
-        table.height = table.width / 2;
+    // Decide orientation by canvas shape
+    const canvasIsLandscape = usableW >= usableH;
 
-        table.x = edgePadding + rail;
-        table.y = (canvas.height - table.height) / 2;
+    if (canvasIsLandscape) {
+        // Try filling width first
+        let width = usableW;
+        let height = width / 2;
+
+        // If height overflows, constrain by height instead
+        if (height > usableH) {
+            height = usableH;
+            width = height * 2;
+        }
+
+        table.width = width;
+        table.height = height;
     } else {
-        // Portrait
-        table.height = canvasH;
-        table.width = table.height / 2;
+        // Try filling height first
+        let height = usableH;
+        let width = height / 2;
 
-        table.x = (canvas.width - table.width) / 2;
-        table.y = edgePadding + rail;
+        // If width overflows, constrain by width instead
+        if (width > usableW) {
+            width = usableW;
+            height = width * 2;
+        }
+
+        table.width = width;
+        table.height = height;
     }
+
+    // Center table (felt), accounting for rails
+    table.x = (canvas.width  - table.width)  / 2;
+    table.y = (canvas.height - table.height) / 2;
 
     setupDiamonds();
 }
-
-
-
 
 // Diamonds
 function setupDiamonds() {
