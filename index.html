@@ -1,25 +1,122 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Pool Trainer - Hello World</title>
-    <style>
-        body { font-family: sans-serif; text-align: center; margin-top: 50px; }
-    </style>
+<meta charset="UTF-8">
+<title>Mini Chalkboard Pool</title>
+<style>
+    body { font-family: sans-serif; text-align: center; margin: 20px; }
+    canvas { border: 2px solid #333; background: #0a5d2f; cursor: pointer; }
+    #instructions { margin-bottom: 10px; }
+</style>
 </head>
 <body>
-    <h1>Hello World! 🎱</h1>
-    <canvas id="poolCanvas" width="600" height="300" style="border:1px solid #333;"></canvas>
+<h1>Mini Chalkboard Pool 🎱</h1>
+<div id="instructions">
+    Drag red balls. Click & drag anywhere to draw lines.
+</div>
+<canvas id="poolCanvas" width="800" height="400"></canvas>
 
-    <script>
-        const canvas = document.getElementById('poolCanvas');
-        const ctx = canvas.getContext('2d');
+<script>
+// Canvas setup
+const canvas = document.getElementById('poolCanvas');
+const ctx = canvas.getContext('2d');
 
-        // Draw a single ball in the middle
-        ctx.fillStyle = 'red';
+// Ball data
+let balls = [
+    {x: 200, y: 200, radius: 15, color: 'red'},
+    {x: 400, y: 200, radius: 15, color: 'yellow'},
+    {x: 600, y: 200, radius: 15, color: 'blue'}
+];
+
+let draggingBall = null;
+let offsetX = 0, offsetY = 0;
+
+// Line drawing data
+let drawingLine = false;
+let lineStart = null;
+let lines = [];
+
+// Draw function
+function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // Draw lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    ctx.lineWidth = 2;
+    lines.forEach(l => {
         ctx.beginPath();
-        ctx.arc(canvas.width/2, canvas.height/2, 15, 0, Math.PI*2);
+        ctx.moveTo(l.start.x, l.start.y);
+        ctx.lineTo(l.end.x, l.end.y);
+        ctx.stroke();
+    });
+
+    // Draw balls
+    balls.forEach(ball => {
+        ctx.fillStyle = ball.color;
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI*2);
         ctx.fill();
-    </script>
+        ctx.strokeStyle = '#000';
+        ctx.stroke();
+    });
+}
+
+// Helpers
+function getBallAt(x, y) {
+    return balls.find(ball => {
+        const dx = ball.x - x;
+        const dy = ball.y - y;
+        return Math.sqrt(dx*dx + dy*dy) <= ball.radius;
+    });
+}
+
+// Mouse events
+canvas.addEventListener('mousedown', e => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    const ball = getBallAt(mx,my);
+    if(ball) {
+        draggingBall = ball;
+        offsetX = mx - ball.x;
+        offsetY = my - ball.y;
+    } else {
+        drawingLine = true;
+        lineStart = {x: mx, y: my};
+    }
+});
+
+canvas.addEventListener('mousemove', e => {
+    if(draggingBall || drawingLine){
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        if(draggingBall){
+            draggingBall.x = mx - offsetX;
+            draggingBall.y = my - offsetY;
+        }
+    }
+    draw();
+});
+
+canvas.addEventListener('mouseup', e => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    if(draggingBall){
+        draggingBall = null;
+    } else if(drawingLine){
+        lines.push({start: lineStart, end: {x: mx, y: my}});
+        drawingLine = false;
+    }
+    draw();
+});
+
+// Initial draw
+draw();
+</script>
 </body>
 </html>
