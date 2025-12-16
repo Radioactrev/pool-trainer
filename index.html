@@ -72,26 +72,34 @@ function setupTable() {
     diamonds = [];
 
 // Fraction positions
-const longSidePositions = [1/6, 1/3, 2/3, 5/6]; // 4 diamonds on long sides
-const shortSidePositions = [1/3, 2/3];          // 2 diamonds on short sides
+const longSidePositions = [1/6, 1/3, 2/3, 5/6]; // 4 diamonds
+const shortSidePositions = [1/3, 2/3];          // 2 diamonds
 
 const isLandscape = table.width > table.height;
 
-// Top & bottom rails (long sides)
-longSidePositions.forEach(p => {
-    // Top rail
-    diamonds.push({x: table.x + table.width*p, y: table.y - table.railWidth/2});
-    // Bottom rail
-    diamonds.push({x: table.x + table.width*p, y: table.y + table.height + table.railWidth/2});
-});
-
-// Left & right rails (short sides)
-shortSidePositions.forEach(p => {
-    // Left rail
-    diamonds.push({x: table.x - table.railWidth/2, y: table.y + table.height*p});
-    // Right rail
-    diamonds.push({x: table.x + table.width + table.railWidth/2, y: table.y + table.height*p});
-});
+// Determine which sides are long and short
+if(isLandscape){
+    // Long sides: left & right rails
+    longSidePositions.forEach(p => {
+        diamonds.push({x: table.x + table.width, y: table.y + table.height*p}); // right rail
+        diamonds.push({x: table.x, y: table.y + table.height*p});               // left rail
+    });
+    // Short sides: top & bottom rails
+    shortSidePositions.forEach(p => {
+        diamonds.push({x: table.x + table.width*p, y: table.y - table.railWidth/2}); // top rail
+        diamonds.push({x: table.x + table.width*p, y: table.y + table.height + table.railWidth/2}); // bottom rail
+    });
+} else {
+    // Portrait: long sides are top & bottom
+    longSidePositions.forEach(p => {
+        diamonds.push({x: table.x + table.width*p, y: table.y - table.railWidth/2}); // top rail
+        diamonds.push({x: table.x + table.width*p, y: table.y + table.height + table.railWidth/2}); // bottom rail
+    });
+    // Short sides: left & right rails
+    shortSidePositions.forEach(p => {
+        diamonds.push({x: table.x - table.railWidth/2, y: table.y + table.height*p}); // left rail
+        diamonds.push({x: table.x + table.width + table.railWidth/2, y: table.y + table.height*p}); // right rail
+    });
 }
 
 // Draw table
