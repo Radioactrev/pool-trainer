@@ -42,24 +42,29 @@ let diamonds = [];
 
 // Setup table with 2:1 ratio
 function setupTable() {
-    const padding = 20; // optional small padding around edges
-    const canvasW = canvas.width - padding*2;
-    const canvasH = canvas.height - padding*2;
+    const padding = 5; // 4–5px edge padding
+    const canvasW = canvas.width - padding * 2;
+    const canvasH = canvas.height - padding * 2;
 
-    if(canvasW >= canvasH){ // landscape
-        table.width = canvasW;      // long side fills width
-        table.height = table.width / 2; // short side = half of long
+    if (canvasW >= canvasH) {
+        // Landscape: width is long side
+        table.width = canvasW;
+        table.height = table.width / 2;
+
         table.x = padding;
         table.y = (canvas.height - table.height) / 2;
-    } else { // portrait
-        table.height = canvasH;     // long side fills height
-        table.width = table.height / 2; // short side = half of long
+    } else {
+        // Portrait: height is long side
+        table.height = canvasH;
+        table.width = table.height / 2;
+
         table.x = (canvas.width - table.width) / 2;
         table.y = padding;
     }
 
     setupDiamonds();
 }
+
 
 
 // Diamonds
