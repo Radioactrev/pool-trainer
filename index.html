@@ -2,121 +2,128 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Mini Chalkboard Pool</title>
+<title>Responsive Pool Table</title>
 <style>
-    body { font-family: sans-serif; text-align: center; margin: 20px; }
-    canvas { border: 2px solid #333; background: #0a5d2f; cursor: pointer; }
-    #instructions { margin-bottom: 10px; }
+    body { 
+        margin: 0; 
+        padding: 0; 
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        font-family: sans-serif; 
+        background: #222;
+        color: #fff;
+    }
+    #instructions { margin: 10px; text-align: center; }
+    canvas { display: block; margin: auto; border: 2px solid #333; }
+    #controls { margin: 10px; }
 </style>
 </head>
 <body>
-<h1>Mini Chalkboard Pool 🎱</h1>
-<div id="instructions">
-    Drag red balls. Click & drag anywhere to draw lines.
-</div>
-<canvas id="poolCanvas" width="800" height="400"></canvas>
+<h1>Responsive Pool Table 🎱</h1>
+<div id="instructions">Resize window or rotate device: table adjusts automatically.</div>
+<canvas id="poolCanvas"></canvas>
 
 <script>
 // Canvas setup
 const canvas = document.getElementById('poolCanvas');
 const ctx = canvas.getContext('2d');
 
-// Ball data
-let balls = [
-    {x: 200, y: 200, radius: 15, color: 'red'},
-    {x: 400, y: 200, radius: 15, color: 'yellow'},
-    {x: 600, y: 200, radius: 15, color: 'blue'}
-];
+// Table style
+const tableStyle = {
+    feltColor: '#0a5d2f',
+    railColor: '#654321',
+    diamondColor: '#fff',
+    pocketColor: '#000'
+};
 
-let draggingBall = null;
-let offsetX = 0, offsetY = 0;
+// Table geometry
+let table = { x:0, y:0, width:0, height:0, railWidth:30, pocketRadius:18 };
+let diamonds = [];
 
-// Line drawing data
-let drawingLine = false;
-let lineStart = null;
-let lines = [];
+// Initialize table
+function setupTable() {
+    const w = window.innerWidth * 0.95;
+    const h = window.innerHeight * 0.7;
+    const isPortrait = h > w;
 
-// Draw function
-function draw() {
+    // Landscape: wider, Portrait: taller
+    table.width = isPortrait ? w * 0.9 : w * 0.95;
+    table.height = isPortrait ? h * 0.55 : h * 0.5;
+    table.x = (w - table.width)/2;
+    table.y = (h - table.height)/2;
+
+    // Diamonds every 10% of rail length
+    diamonds = [];
+    const positions = [0.1, 0.25, 0.5, 0.75, 0.9];
+
+    // Top & bottom rails
+    positions.forEach(p => {
+        diamonds.push({x: table.x + table.width*p, y: table.y + table.railWidth/2});
+        diamonds.push({x: table.x + table.width*p, y: table.y + table.height - table.railWidth/2});
+    });
+
+    // Left & right rails
+    positions.forEach(p => {
+        diamonds.push({x: table.x + table.railWidth/2, y: table.y + table.height*p});
+        diamonds.push({x: table.x + table.width - table.railWidth/2, y: table.y + table.height*p});
+    });
+}
+
+// Draw table
+function drawTable() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // Draw lines
-    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-    ctx.lineWidth = 2;
-    lines.forEach(l => {
-        ctx.beginPath();
-        ctx.moveTo(l.start.x, l.start.y);
-        ctx.lineTo(l.end.x, l.end.y);
-        ctx.stroke();
-    });
+    // Draw felt
+    ctx.fillStyle = tableStyle.feltColor;
+    ctx.fillRect(table.x, table.y, table.width, table.height);
 
-    // Draw balls
-    balls.forEach(ball => {
-        ctx.fillStyle = ball.color;
+    // Draw rails
+    ctx.fillStyle = tableStyle.railColor;
+    // Top
+    ctx.fillRect(table.x - table.railWidth, table.y - table.railWidth, table.width + 2*table.railWidth, table.railWidth);
+    // Bottom
+    ctx.fillRect(table.x - table.railWidth, table.y + table.height, table.width + 2*table.railWidth, table.railWidth);
+    // Left
+    ctx.fillRect(table.x - table.railWidth, table.y, table.railWidth, table.height);
+    // Right
+    ctx.fillRect(table.x + table.width, table.y, table.railWidth, table.height);
+
+    // Draw diamonds
+    ctx.fillStyle = tableStyle.diamondColor;
+    diamonds.forEach(d => {
         ctx.beginPath();
-        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI*2);
+        ctx.arc(d.x, d.y, 5, 0, Math.PI*2);
         ctx.fill();
-        ctx.strokeStyle = '#000';
-        ctx.stroke();
+    });
+
+    // Draw pockets
+    ctx.fillStyle = tableStyle.pocketColor;
+    const pockets = [
+        {x: table.x, y: table.y},
+        {x: table.x + table.width/2, y: table.y},
+        {x: table.x + table.width, y: table.y},
+        {x: table.x, y: table.y + table.height},
+        {x: table.x + table.width/2, y: table.y + table.height},
+        {x: table.x + table.width, y: table.y + table.height}
+    ];
+    pockets.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, table.pocketRadius, 0, Math.PI*2);
+        ctx.fill();
     });
 }
 
-// Helpers
-function getBallAt(x, y) {
-    return balls.find(ball => {
-        const dx = ball.x - x;
-        const dy = ball.y - y;
-        return Math.sqrt(dx*dx + dy*dy) <= ball.radius;
-    });
+// Resize handler
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight * 0.8;
+    setupTable();
+    drawTable();
 }
 
-// Mouse events
-canvas.addEventListener('mousedown', e => {
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-
-    const ball = getBallAt(mx,my);
-    if(ball) {
-        draggingBall = ball;
-        offsetX = mx - ball.x;
-        offsetY = my - ball.y;
-    } else {
-        drawingLine = true;
-        lineStart = {x: mx, y: my};
-    }
-});
-
-canvas.addEventListener('mousemove', e => {
-    if(draggingBall || drawingLine){
-        const rect = canvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
-
-        if(draggingBall){
-            draggingBall.x = mx - offsetX;
-            draggingBall.y = my - offsetY;
-        }
-    }
-    draw();
-});
-
-canvas.addEventListener('mouseup', e => {
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-
-    if(draggingBall){
-        draggingBall = null;
-    } else if(drawingLine){
-        lines.push({start: lineStart, end: {x: mx, y: my}});
-        drawingLine = false;
-    }
-    draw();
-});
-
-// Initial draw
-draw();
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas(); // initial draw
 </script>
 </body>
 </html>
