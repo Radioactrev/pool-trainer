@@ -70,19 +70,24 @@ function setupTable() {
 
     // Diamonds (fraction positions)
     diamonds = [];
-    const positions = [1/6, 1/3, 1/2, 2/3, 5/6];
 
-    // Top & bottom rails
-    positions.forEach(p => {
-        diamonds.push({x: table.x + table.width*p, y: table.y + table.railWidth/2});
-        diamonds.push({x: table.x + table.width*p, y: table.y + table.height - table.railWidth/2});
-    });
+// Fraction positions
+const longSidePositions = [1/6, 1/3, 2/3, 5/6];
+const shortSidePositions = [1/3, 2/3];
 
-    // Left & right rails
-    positions.forEach(p => {
-        diamonds.push({x: table.x + table.railWidth/2, y: table.y + table.height*p});
-        diamonds.push({x: table.x + table.width - table.railWidth/2, y: table.y + table.height*p});
-    });
+const isLandscape = table.width > table.height;
+
+// Top & bottom rails (long sides)
+longSidePositions.forEach(p => {
+    diamonds.push({x: table.x + table.width*p, y: table.y + table.railWidth/2});
+    diamonds.push({x: table.x + table.width*p, y: table.y + table.height - table.railWidth/2});
+});
+
+// Left & right rails (short sides)
+shortSidePositions.forEach(p => {
+    diamonds.push({x: table.x + table.railWidth/2, y: table.y + table.height*p});
+    diamonds.push({x: table.x + table.width - table.railWidth/2, y: table.y + table.height*p});
+});
 }
 
 // Draw table
