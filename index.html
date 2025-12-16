@@ -43,17 +43,40 @@ let diamonds = [];
 
 // Initialize table
 function setupTable() {
-    const w = window.innerWidth * 0.95;
-    const h = window.innerHeight * 0.7;
-    const isPortrait = h > w;
+    const canvasW = canvas.width;
+    const canvasH = canvas.height;
+    const isPortrait = canvasH > canvasW;
 
-    // Landscape: wider, Portrait: taller
-    table.width = isPortrait ? w * 0.9 : w * 0.95;
-    table.height = isPortrait ? h * 0.55 : h * 0.5;
-    table.x = (w - table.width)/2;
-    table.y = (h - table.height)/2;
+    // Max dimensions that fit in canvas with some padding
+    const padding = 40;
+    const maxW = canvasW - padding*2;
+    const maxH = canvasH - padding*2;
 
-    // Diamonds every 10% of rail length
+    let shortSide, longSide;
+
+    if(isPortrait){
+        // Portrait: table taller than wide
+        shortSide = Math.min(maxW, maxH / 2);
+        longSide = shortSide * 2;
+    } else {
+        // Landscape: table wider than tall
+        shortSide = Math.min(maxH, maxW / 2);
+        longSide = shortSide * 2;
+    }
+
+    if(isPortrait){
+        table.width = shortSide;
+        table.height = longSide;
+    } else {
+        table.width = longSide;
+        table.height = shortSide;
+    }
+
+    // Center table on canvas
+    table.x = (canvasW - table.width) / 2;
+    table.y = (canvasH - table.height) / 2;
+
+    // Diamonds (same as before, relative positions)
     diamonds = [];
     const positions = [0.1, 0.25, 0.5, 0.75, 0.9];
 
