@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pool Trainer - Hello World</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; margin-top: 50px; }
+    </style>
+</head>
+<body>
+    <h1>Hello World! 🎱</h1>
+    <canvas id="poolCanvas" width="600" height="300" style="border:1px solid #333;"></canvas>
+
+    <script>
+        const canvas = document.getElementById('poolCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Draw a single ball in the middle
+        ctx.fillStyle = 'red';
+        ctx.beginPath();
+        ctx.arc(canvas.width/2, canvas.height/2, 15, 0, Math.PI*2);
+        ctx.fill();
+    </script>
+</body>
+</html>
