@@ -79,14 +79,18 @@ const isLandscape = table.width > table.height;
 
 // Top & bottom rails (long sides)
 longSidePositions.forEach(p => {
-    diamonds.push({x: table.x + table.width*p, y: table.y + table.railWidth/2});
-    diamonds.push({x: table.x + table.width*p, y: table.y + table.height - table.railWidth/2});
+    // Top rail
+    diamonds.push({x: table.x + table.width*p, y: table.y - table.railWidth/2});
+    // Bottom rail
+    diamonds.push({x: table.x + table.width*p, y: table.y + table.height + table.railWidth/2});
 });
 
 // Left & right rails (short sides)
 shortSidePositions.forEach(p => {
-    diamonds.push({x: table.x + table.railWidth/2, y: table.y + table.height*p});
-    diamonds.push({x: table.x + table.width - table.railWidth/2, y: table.y + table.height*p});
+    // Left rail
+    diamonds.push({x: table.x - table.railWidth/2, y: table.y + table.height*p});
+    // Right rail
+    diamonds.push({x: table.x + table.width + table.railWidth/2, y: table.y + table.height*p});
 });
 }
 
