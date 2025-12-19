@@ -10,3 +10,35 @@ html, body {
 canvas {
     display: block;
 }
+
+#menuToggle {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    font-size: 28px;
+    color: white;
+    background: rgba(0,0,0,0.65);
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    user-select: none;
+    z-index: 10;
+}
+
+#menuPanel {
+    position: absolute;
+    top: 52px;
+    left: 8px;
+    background: rgba(0,0,0,0.85);
+    padding: 10px;
+    border-radius: 8px;
+    display: none;
+    z-index: 10;
+}
+
+#menuPanel button {
+    display: block;
+    width: 150px;
+    margin: 6px 0;
+    font-size: 16px;
+}
