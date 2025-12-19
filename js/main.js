@@ -2,6 +2,15 @@
 const canvas = document.getElementById('poolCanvas');
 const ctx = canvas.getContext('2d');
 
+// Menu setup
+const menuToggle = document.getElementById('menuToggle');
+const menuPanel = document.getElementById('menuPanel');
+
+menuToggle.addEventListener('click', () => {
+    menuPanel.style.display =
+        menuPanel.style.display === 'block' ? 'none' : 'block';
+});
+
 // Table style
 const tableStyle = {
     feltColor: '#0a5d2f',
