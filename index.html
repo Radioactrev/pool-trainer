@@ -11,12 +11,19 @@
 
 <body>
 
-<div id="menuToggle" aria-label="Open menu">☰</div>
+<div id="menuToggle">☰</div>
 
 <div id="menuPanel">
-    <button id="addCue">Add Cue Ball</button>
-    <button id="addObject">Add Object Ball</button>
-    <button id="clearTable">Clear Table</button>
+    <div class="menu-item" data-menu="table">Table Design</div>
+
+    <div class="menu-item" data-menu="balls">
+        Pool Balls ▸
+    </div>
+
+    <div class="submenu" id="ballMenu">
+        <div class="submenu-item" data-ball="cue">Cue Ball</div>
+        <div class="submenu-item" data-ball="8">8 Ball</div>
+    </div>
 </div>
   
 <canvas id="poolCanvas"></canvas>
