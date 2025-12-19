@@ -1,4 +1,6 @@
-html, body {
+/* ===== Base layout ===== */
+html,
+body {
     margin: 0;
     padding: 0;
     width: 100%;
@@ -7,42 +9,69 @@ html, body {
     background: #222;
 }
 
+/* ===== Canvas ===== */
 canvas {
-    display: block;
     position: absolute;
-    top: 0;
-    left: 0;
+    inset: 0;
+    display: block;
     z-index: 1;
 }
 
+/* ===== Hamburger toggle ===== */
 #menuToggle {
     position: absolute;
     top: 8px;
     left: 8px;
+
     font-size: 28px;
-    color: white;
-    background: rgba(0,0,0,0.65);
+    color: #fff;
+
+    background: rgba(0, 0, 0, 0.65);
     padding: 6px 10px;
     border-radius: 6px;
+
     cursor: pointer;
     user-select: none;
     z-index: 10;
 }
 
+/* ===== Menu panel ===== */
 #menuPanel {
-    position: absolute;
-    top: 52px;
-    left: 8px;
-    background: rgba(0,0,0,0.85);
-    padding: 10px;
-    border-radius: 8px;
     display: none;
+	position: absolute;
+    top: 44px;
+    left: 10px;
+
+    background: #333;
+    color: #eee;
+    border-radius: 6px;
+
+    padding: 6px 0;
+    font-family: sans-serif;
     z-index: 10;
 }
 
-#menuPanel button {
-    display: block;
-    width: 150px;
-    margin: 6px 0;
-    font-size: 16px;
+/* ===== Menu items ===== */
+.menu-item,
+.submenu-item {
+    padding: 8px 14px;
+    color: #eee;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.menu-item:hover,
+.submenu-item:hover {
+    background: #444;
+}
+
+/* ===== Submenus ===== */
+.submenu {
+    display: none;
+    margin-left: 10px;
+    border-left: 2px solid #555;
+}
+
+.submenu-item {
+    font-size: 14px;
 }
