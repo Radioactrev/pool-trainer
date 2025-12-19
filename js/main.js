@@ -65,8 +65,8 @@ function setupTable() {
 
     // Center table (felt), accounting for rails
         
-    table.x = canvas.width - table.width - edgePadding;
-    table.y = canvas.height - table.height - edgePadding;
+    table.x = canvas.width - table.width - table.railWidth - edgePadding;
+    table.y = canvas.height - table.height - table.railWidth - edgePadding;
 
     setupDiamonds();
 }
