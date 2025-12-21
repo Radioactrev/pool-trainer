@@ -1,4 +1,4 @@
-const CODE_VERSION = 1; // manually increment whenever you update/upload code
+const CODE_VERSION = 3; // manually increment whenever you update/upload code
 
 /* =========================
    Canvas Setup
@@ -226,60 +226,41 @@ function drawBall(ball) {
 /* =========================
    Interaction
 ========================= */
-let dragStartX = 0;
-let dragStartY = 0;
-let ballStartX = 0;
-let ballStartY = 0;
 
 canvas.addEventListener('pointerdown', e => {
-    e.preventDefault();
-
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
     const clickedBall = getBallAt(x, y);
 
-    // 1️⃣ Clicked directly on a ball
     if (clickedBall) {
         selectedBall = clickedBall;
         isDragging = true;
 
-        dragStartX = x;
-        dragStartY = y;
-        ballStartX = clickedBall.x;
-        ballStartY = clickedBall.y;
+        dragOffsetX = x - selectedBall.x;
+        dragOffsetY = y - selectedBall.y;
 
         canvas.setPointerCapture(e.pointerId);
         drawTable();
         return;
     }
 
-    // 2️⃣ Clicked inside drag ring of already-selected ball
     if (selectedBall && isInsideDragZone(selectedBall, x, y)) {
-    isDragging = true;
+        isDragging = true;
 
-    // Maintain offset from pointer to ball center
-    dragStartX = x;
-    dragStartY = y;
-    ballStartX = selectedBall.x;
-    ballStartY = selectedBall.y;
+        dragOffsetX = x - selectedBall.x;
+        dragOffsetY = y - selectedBall.y;
 
-    // BUT ALSO preserve the original offset
-    dragOffsetX = selectedBall.x - x;
-    dragOffsetY = selectedBall.y - y;
+        canvas.setPointerCapture(e.pointerId);
+        return;
+    }
 
-    canvas.setPointerCapture(e.pointerId);
-    return;
-}
-
-    // 3️⃣ Clicked somewhere else → deselect
     if (selectedBall) {
         deselectBall();
         return;
     }
 
-    // 4️⃣ Place new ball
     if (selectedBallType && isInsideFelt(x, y)) {
         placeBall(x, y);
     }
@@ -292,10 +273,18 @@ canvas.addEventListener('pointermove', e => {
     const pointerX = e.clientX - rect.left;
     const pointerY = e.clientY - rect.top;
 
-    const newX = pointerX + dragOffsetX;
-    const newY = pointerY + dragOffsetY;
+    const newX = pointerX - dragOffsetX;
+    const newY = pointerY - dragOffsetY;
 
-    clampBallToRail(selectedBall, newX, newY);
+    const clamped = { x: newX, y: newY };
+    clampBallToRail(clamped, newX, newY);
+
+    if (isOverlappingAnyBall(clamped.x, clamped.y, selectedBall)) {
+        return;
+    }
+
+    selectedBall.x = clamped.x;
+    selectedBall.y = clamped.y;
 
     if (isBallInPocket(selectedBall)) {
         balls.splice(balls.indexOf(selectedBall), 1);
@@ -305,6 +294,8 @@ canvas.addEventListener('pointermove', e => {
 
     drawTable();
 });
+
+
 
 canvas.addEventListener('pointerup', endDrag);
 canvas.addEventListener('pointercancel', endDrag);
