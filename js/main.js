@@ -224,19 +224,21 @@ canvas.addEventListener('pointerdown', e => {
 
     const clickedBall = getBallAt(x, y);
 
-    // 1️⃣ Click directly on a ball → select it
     if (clickedBall) {
         selectedBall = clickedBall;
         isDragging = true;
-        dragOffsetX = selectedBall.x - x;
-        dragOffsetY = selectedBall.y - y;
+
+        // Calculate offset from pointer to ball center
+        dragOffsetX = clickedBall.x - x;
+        dragOffsetY = clickedBall.y - y;
+
         canvas.setPointerCapture(e.pointerId);
         drawTable();
         return;
     }
 
-    // 2️⃣ Click inside the drag ring of the selected ball → start precision drag
-    if (selectedBall && isInsideDragZone(selectedBall, x, y)) {
+    // Check if tap is inside drag ring for selected ball
+    if (selectedBall && distance(x, y, selectedBall.x, selectedBall.y) <= DRAG_RING_RADIUS) {
         isDragging = true;
         dragOffsetX = selectedBall.x - x;
         dragOffsetY = selectedBall.y - y;
@@ -244,13 +246,11 @@ canvas.addEventListener('pointerdown', e => {
         return;
     }
 
-    // 3️⃣ Clicked outside everything → deselect
     if (selectedBall) {
         deselectBall();
         return;
     }
 
-    // 4️⃣ Place new ball from menu
     if (selectedBallType && isInsideFelt(x, y)) {
         placeBall(x, y);
     }
@@ -263,9 +263,8 @@ canvas.addEventListener('pointermove', e => {
     const x = e.clientX - rect.left + dragOffsetX;
     const y = e.clientY - rect.top + dragOffsetY;
 
-    if (isOverlappingAnyBall(x, y, selectedBall)) return;
-
-    clampBallToRails(selectedBall, x, y);
+    // Clamp into rail/felt
+    clampBallToRail(selectedBall, x, y);
 
     if (isBallInPocket(selectedBall)) {
         balls.splice(balls.indexOf(selectedBall), 1);
@@ -315,7 +314,7 @@ function placeBall(x, y) {
     drawTable();
 }
 
-function clampBallToRails(ball, x, y) {
+function clampBallToRail(ball, x, y) {
     const minX = table.x - table.railWidth + BALL_RADIUS;
     const maxX = table.x + table.width + table.railWidth - BALL_RADIUS;
     const minY = table.y - table.railWidth + BALL_RADIUS;
