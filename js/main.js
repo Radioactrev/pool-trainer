@@ -14,7 +14,7 @@ let dragOffset = { x: 0, y: 0 };
 
 const balls = [];
 const BALL_RADIUS = 10;
-const DRAG_RING_RADIUS = BALL_RADIUS * 2.2;
+const DRAG_RING_RADIUS = BALL_RADIUS * 6;
 const DRAG_RING_THICKNESS = 6;
 
 /* =========================
@@ -26,7 +26,9 @@ const ballMenu = document.getElementById('ballMenu');
 const poolBallMenuItem = document.querySelector('[data-menu="balls"]');
 
 menuToggle.addEventListener('click', () => {
-    menuPanel.style.display =
+    deselectBall();
+	
+	menuPanel.style.display =
         menuPanel.style.display === 'block' ? 'none' : 'block';
 });
 
@@ -38,6 +40,7 @@ poolBallMenuItem.addEventListener('click', () => {
 document.querySelectorAll('[data-ball]').forEach(item => {
     item.addEventListener('click', () => {
         selectedBallType = item.dataset.ball;
+		deselectBall();
         menuPanel.style.display = 'none';
     });
 });
@@ -220,24 +223,48 @@ canvas.addEventListener('pointerdown', (e) => {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // If a ball is already selected, check drag ring first
-    if (selectedBall && isOnDragRing(selectedBall, x, y)) {
-        isDragging = true;
-        dragOffset.x = x - selectedBall.x;
-        dragOffset.y = y - selectedBall.y;
-        canvas.setPointerCapture(e.pointerId);
-        return;
-    }
+    const clickedBall = getBallAt(x, y);
 
-    // Otherwise, try selecting a ball
-    const ball = getBallAt(x, y);
-    if (ball) {
-        selectedBall = ball;
+    // 1️⃣ Clicked a DIFFERENT ball → switch selection immediately
+    if (clickedBall && clickedBall !== selectedBall) {
+        selectedBall = clickedBall;
+        isDragging = true;
+        dragOffsetX = 0;
+        dragOffsetY = 0;
+        canvas.setPointerCapture(e.pointerId);
         drawTable();
         return;
     }
 
-    // Otherwise place a new ball (menu-selected)
+    // 2️⃣ Drag from drag ring (precision drag)
+    if (selectedBall && isInsideDragZone(selectedBall, x, y)) {
+        isDragging = true;
+        dragOffsetX = selectedBall.x - x;
+        dragOffsetY = selectedBall.y - y;
+        canvas.setPointerCapture(e.pointerId);
+        return;
+    }
+
+    // 3️⃣ Drag directly from the selected ball
+    if (
+        selectedBall &&
+        distance(x, y, selectedBall.x, selectedBall.y) <= BALL_RADIUS
+    ) {
+        isDragging = true;
+        dragOffsetX = 0;
+        dragOffsetY = 0;
+        canvas.setPointerCapture(e.pointerId);
+        return;
+    }
+
+    // 4️⃣ Clicked empty space → deselect
+    if (selectedBall) {
+        selectedBall = null;
+        drawTable();
+        return;
+    }
+
+    // 5️⃣ Place new ball (menu-selected)
     if (selectedBallType && isInsideFelt(x, y)) {
         placeBall(x, y);
     }
@@ -247,16 +274,16 @@ canvas.addEventListener('pointermove', (e) => {
     if (!isDragging || !selectedBall) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left - dragOffset.x;
-    const y = e.clientY - rect.top - dragOffset.y;
+    const x = e.clientX - rect.left + dragOffsetX;
+    const y = e.clientY - rect.top + dragOffsetY;
 
-    if (!isInsideFelt(x, y)) return;
+    // Prevent overlap
+    if (isOverlappingAnyBall(x, y, selectedBall)) return;
 
-    selectedBall.x = x;
-    selectedBall.y = y;
-
+    clampBallToFelt(selectedBall, x, y);
     drawTable();
 });
+
 
 canvas.addEventListener('pointerup', endDrag);
 canvas.addEventListener('pointercancel', endDrag);
@@ -301,20 +328,45 @@ function getBallAt(x, y) {
     );
 }
 
-function isOnDragRing(ball, x, y) {
+function isInsideDragZone(ball, x, y) {
     const d = distance(x, y, ball.x, ball.y);
-    return (
-        d >= DRAG_RING_RADIUS - DRAG_RING_THICKNESS &&
-        d <= DRAG_RING_RADIUS + DRAG_RING_THICKNESS
-    );
+    return d <= DRAG_RING_RADIUS + DRAG_RING_THICKNESS / 2;
 }
 
 function placeBall(x, y) {
+    if (isOverlappingAnyBall(x, y)) return;
+
     balls.push({
         x,
         y,
         type: selectedBallType
     });
 
+    selectedBallType = null;
     drawTable();
+}
+
+function clampBallToFelt(ball, x, y) {
+    ball.x = Math.max(
+        table.x + BALL_RADIUS,
+        Math.min(table.x + table.width - BALL_RADIUS, x)
+    );
+
+    ball.y = Math.max(
+        table.y + BALL_RADIUS,
+        Math.min(table.y + table.height - BALL_RADIUS, y)
+    );
+}
+
+function deselectBall() {
+    selectedBall = null;
+    isDragging = false;
+    drawTable();
+}
+
+function isOverlappingAnyBall(x, y, ignoreBall = null) {
+    return balls.some(ball => {
+        if (ball === ignoreBall) return false;
+        return distance(x, y, ball.x, ball.y) < BALL_RADIUS * 2;
+    });
 }
