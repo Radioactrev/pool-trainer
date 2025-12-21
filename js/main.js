@@ -1,3 +1,5 @@
+const CODE_VERSION = 1; // manually increment whenever you update/upload code
+
 /* =========================
    Canvas Setup
 ========================= */
@@ -171,6 +173,13 @@ function drawTable() {
         ctx.arc(d.x, d.y, 5, 0, Math.PI * 2);
         ctx.fill();
     });
+	
+	// Draw version indicator
+	ctx.fillStyle = 'rgba(255,255,255,0.8)';
+	ctx.font = '16px sans-serif';
+	ctx.textAlign = 'right';
+	ctx.textBaseline = 'top';
+	ctx.fillText(`v${CODE_VERSION}`, canvas.width - 10, 10);
 
     drawPockets();
     balls.forEach(drawBall);
