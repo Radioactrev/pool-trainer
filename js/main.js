@@ -1,4 +1,4 @@
-const CODE_VERSION = 2; // manually increment whenever you update/upload code
+const CODE_VERSION = 1; // manually increment whenever you update/upload code
 
 /* =========================
    Canvas Setup
@@ -232,31 +232,54 @@ let ballStartX = 0;
 let ballStartY = 0;
 
 canvas.addEventListener('pointerdown', e => {
+    e.preventDefault();
+
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
     const clickedBall = getBallAt(x, y);
 
+    // 1️⃣ Clicked directly on a ball
     if (clickedBall) {
         selectedBall = clickedBall;
         isDragging = true;
 
-        dragOffsetX = x - clickedBall.x;
-        dragOffsetY = y - clickedBall.y;
+        dragStartX = x;
+        dragStartY = y;
+        ballStartX = clickedBall.x;
+        ballStartY = clickedBall.y;
 
         canvas.setPointerCapture(e.pointerId);
         drawTable();
         return;
     }
 
-    // Tap outside any ball deselects
+    // 2️⃣ Clicked inside drag ring of already-selected ball
+    if (selectedBall && isInsideDragZone(selectedBall, x, y)) {
+    isDragging = true;
+
+    // Maintain offset from pointer to ball center
+    dragStartX = x;
+    dragStartY = y;
+    ballStartX = selectedBall.x;
+    ballStartY = selectedBall.y;
+
+    // BUT ALSO preserve the original offset
+    dragOffsetX = selectedBall.x - x;
+    dragOffsetY = selectedBall.y - y;
+
+    canvas.setPointerCapture(e.pointerId);
+    return;
+}
+
+    // 3️⃣ Clicked somewhere else → deselect
     if (selectedBall) {
         deselectBall();
         return;
     }
 
-    // Place a new ball
+    // 4️⃣ Place new ball
     if (selectedBallType && isInsideFelt(x, y)) {
         placeBall(x, y);
     }
@@ -266,10 +289,13 @@ canvas.addEventListener('pointermove', e => {
     if (!isDragging || !selectedBall) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left - dragOffsetX;
-    const y = e.clientY - rect.top - dragOffsetY;
+    const pointerX = e.clientX - rect.left;
+    const pointerY = e.clientY - rect.top;
 
-    clampBallToRail(selectedBall, x, y);
+    const newX = pointerX + dragOffsetX;
+    const newY = pointerY + dragOffsetY;
+
+    clampBallToRail(selectedBall, newX, newY);
 
     if (isBallInPocket(selectedBall)) {
         balls.splice(balls.indexOf(selectedBall), 1);
