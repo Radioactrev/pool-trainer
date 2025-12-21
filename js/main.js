@@ -1,4 +1,4 @@
-const CODE_VERSION = 1; // manually increment whenever you update/upload code
+const CODE_VERSION = 2; // manually increment whenever you update/upload code
 
 /* =========================
    Canvas Setup
@@ -242,27 +242,11 @@ canvas.addEventListener('pointerdown', e => {
         selectedBall = clickedBall;
         isDragging = true;
 
-        // Store starting positions
-        dragStartX = x;
-        dragStartY = y;
-        ballStartX = clickedBall.x;
-        ballStartY = clickedBall.y;
+        dragOffsetX = x - clickedBall.x;
+        dragOffsetY = y - clickedBall.y;
 
         canvas.setPointerCapture(e.pointerId);
         drawTable();
-        return;
-    }
-
-    // Check if tap is inside drag ring for selected ball
-    if (selectedBall && isInsideDragZone(selectedBall, x, y)) {
-        isDragging = true;
-
-        dragStartX = x;
-        dragStartY = y;
-        ballStartX = selectedBall.x;
-        ballStartY = selectedBall.y;
-
-        canvas.setPointerCapture(e.pointerId);
         return;
     }
 
@@ -282,14 +266,10 @@ canvas.addEventListener('pointermove', e => {
     if (!isDragging || !selectedBall) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = e.clientX - rect.left - dragOffsetX;
+    const y = e.clientY - rect.top - dragOffsetY;
 
-    // Move ball relative to starting positions
-    const newX = ballStartX + (x - dragStartX);
-    const newY = ballStartY + (y - dragStartY);
-
-    clampBallToRail(selectedBall, newX, newY);
+    clampBallToRail(selectedBall, x, y);
 
     if (isBallInPocket(selectedBall)) {
         balls.splice(balls.indexOf(selectedBall), 1);
@@ -305,8 +285,10 @@ canvas.addEventListener('pointercancel', endDrag);
 
 function endDrag(e) {
     isDragging = false;
+    selectedBall = selectedBall; // keep it selected unless tapped outside
     canvas.releasePointerCapture(e.pointerId);
 }
+
 
 /* =========================
    Resize
