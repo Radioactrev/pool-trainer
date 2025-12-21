@@ -217,6 +217,11 @@ function drawBall(ball) {
 /* =========================
    Interaction
 ========================= */
+let dragStartX = 0;
+let dragStartY = 0;
+let ballStartX = 0;
+let ballStartY = 0;
+
 canvas.addEventListener('pointerdown', e => {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -228,9 +233,11 @@ canvas.addEventListener('pointerdown', e => {
         selectedBall = clickedBall;
         isDragging = true;
 
-        // Calculate offset from pointer to ball center
-        dragOffsetX = clickedBall.x - x;
-        dragOffsetY = clickedBall.y - y;
+        // Store starting positions
+        dragStartX = x;
+        dragStartY = y;
+        ballStartX = clickedBall.x;
+        ballStartY = clickedBall.y;
 
         canvas.setPointerCapture(e.pointerId);
         drawTable();
@@ -238,19 +245,25 @@ canvas.addEventListener('pointerdown', e => {
     }
 
     // Check if tap is inside drag ring for selected ball
-    if (selectedBall && distance(x, y, selectedBall.x, selectedBall.y) <= DRAG_RING_RADIUS) {
+    if (selectedBall && isInsideDragZone(selectedBall, x, y)) {
         isDragging = true;
-        dragOffsetX = selectedBall.x - x;
-        dragOffsetY = selectedBall.y - y;
+
+        dragStartX = x;
+        dragStartY = y;
+        ballStartX = selectedBall.x;
+        ballStartY = selectedBall.y;
+
         canvas.setPointerCapture(e.pointerId);
         return;
     }
 
+    // Tap outside any ball deselects
     if (selectedBall) {
         deselectBall();
         return;
     }
 
+    // Place a new ball
     if (selectedBallType && isInsideFelt(x, y)) {
         placeBall(x, y);
     }
@@ -260,11 +273,14 @@ canvas.addEventListener('pointermove', e => {
     if (!isDragging || !selectedBall) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left + dragOffsetX;
-    const y = e.clientY - rect.top + dragOffsetY;
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
 
-    // Clamp into rail/felt
-    clampBallToRail(selectedBall, x, y);
+    // Move ball relative to starting positions
+    const newX = ballStartX + (x - dragStartX);
+    const newY = ballStartY + (y - dragStartY);
+
+    clampBallToRail(selectedBall, newX, newY);
 
     if (isBallInPocket(selectedBall)) {
         balls.splice(balls.indexOf(selectedBall), 1);
