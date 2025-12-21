@@ -7,15 +7,21 @@ const ctx = canvas.getContext('2d');
 /* =========================
    Global State
 ========================= */
-let selectedBallType = null;   // Ball to place from menu
-let selectedBall = null;       // Ball currently selected for dragging
+let selectedBallType = null;
+let selectedBall = null;
 let isDragging = false;
-let dragOffset = { x: 0, y: 0 };
+let dragOffsetX = 0;
+let dragOffsetY = 0;
 
 const balls = [];
+
+/* =========================
+   Constants
+========================= */
 const BALL_RADIUS = 10;
 const DRAG_RING_RADIUS = BALL_RADIUS * 6;
 const DRAG_RING_THICKNESS = 6;
+const POCKET_RADIUS = 18;
 
 /* =========================
    Menu Setup
@@ -27,8 +33,7 @@ const poolBallMenuItem = document.querySelector('[data-menu="balls"]');
 
 menuToggle.addEventListener('click', () => {
     deselectBall();
-	
-	menuPanel.style.display =
+    menuPanel.style.display =
         menuPanel.style.display === 'block' ? 'none' : 'block';
 });
 
@@ -40,7 +45,7 @@ poolBallMenuItem.addEventListener('click', () => {
 document.querySelectorAll('[data-ball]').forEach(item => {
     item.addEventListener('click', () => {
         selectedBallType = item.dataset.ball;
-		deselectBall();
+        deselectBall();
         menuPanel.style.display = 'none';
     });
 });
@@ -58,7 +63,14 @@ const tableStyle = {
 /* =========================
    Table Geometry
 ========================= */
-const table = { x: 0, y: 0, width: 0, height: 0, railWidth: 30, pocketRadius: 18 };
+const table = {
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    railWidth: POCKET_RADIUS * 2.5
+};
+
 let diamonds = [];
 
 /* =========================
@@ -68,9 +80,11 @@ function setupTable() {
     const edgePadding = 5;
     const rail = table.railWidth;
 
-    const usableW = canvas.width  - 2 * (edgePadding + rail);
+    // Usable canvas space (excluding rail + padding)
+    const usableW = canvas.width - 2 * (edgePadding + rail);
     const usableH = canvas.height - 2 * (edgePadding + rail);
 
+    // Fit table to usable space while keeping 2:1 aspect ratio
     if (usableW >= usableH) {
         table.width = usableW;
         table.height = table.width / 2;
@@ -87,9 +101,9 @@ function setupTable() {
         }
     }
 
-    // Anchor table to lower-right with padding
-    table.x = canvas.width  - table.width  - rail - edgePadding;
-    table.y = canvas.height - table.height - rail - edgePadding;
+    // Center the table inside the usable canvas area
+    table.x = (canvas.width  - table.width)  / 2;
+    table.y = (canvas.height - table.height) / 2;
 
     setupDiamonds();
 }
@@ -99,27 +113,36 @@ function setupTable() {
 ========================= */
 function setupDiamonds() {
     diamonds = [];
+
     const longSide = [1/8, 2/8, 3/8, 5/8, 6/8, 7/8];
     const shortSide = [1/4, 2/4, 3/4];
-    const isLandscape = table.width >= table.height;
+    const landscape = table.width >= table.height;
 
-    if (isLandscape) {
+    if (landscape) {
         longSide.forEach(p => {
-            diamonds.push({ x: table.x + table.width * p, y: table.y - table.railWidth / 2 });
-            diamonds.push({ x: table.x + table.width * p, y: table.y + table.height + table.railWidth / 2 });
+            diamonds.push(
+                { x: table.x + table.width * p, y: table.y - table.railWidth / 2 },
+                { x: table.x + table.width * p, y: table.y + table.height + table.railWidth / 2 }
+            );
         });
         shortSide.forEach(p => {
-            diamonds.push({ x: table.x - table.railWidth / 2, y: table.y + table.height * p });
-            diamonds.push({ x: table.x + table.width + table.railWidth / 2, y: table.y + table.height * p });
+            diamonds.push(
+                { x: table.x - table.railWidth / 2, y: table.y + table.height * p },
+                { x: table.x + table.width + table.railWidth / 2, y: table.y + table.height * p }
+            );
         });
     } else {
         longSide.forEach(p => {
-            diamonds.push({ x: table.x - table.railWidth / 2, y: table.y + table.height * p });
-            diamonds.push({ x: table.x + table.width + table.railWidth / 2, y: table.y + table.height * p });
+            diamonds.push(
+                { x: table.x - table.railWidth / 2, y: table.y + table.height * p },
+                { x: table.x + table.width + table.railWidth / 2, y: table.y + table.height * p }
+            );
         });
         shortSide.forEach(p => {
-            diamonds.push({ x: table.x + table.width * p, y: table.y - table.railWidth / 2 });
-            diamonds.push({ x: table.x + table.width * p, y: table.y + table.height + table.railWidth / 2 });
+            diamonds.push(
+                { x: table.x + table.width * p, y: table.y - table.railWidth / 2 },
+                { x: table.x + table.width * p, y: table.y + table.height + table.railWidth / 2 }
+            );
         });
     }
 }
@@ -154,45 +177,22 @@ function drawTable() {
 }
 
 function drawPockets() {
-    const pockets = [
-        { x: table.x, y: table.y },
-        { x: table.x + table.width, y: table.y },
-        { x: table.x, y: table.y + table.height },
-        { x: table.x + table.width, y: table.y + table.height }
-    ];
-
-    if (table.width >= table.height) {
-        pockets.push(
-            { x: table.x + table.width / 2, y: table.y },
-            { x: table.x + table.width / 2, y: table.y + table.height }
-        );
-    } else {
-        pockets.push(
-            { x: table.x, y: table.y + table.height / 2 },
-            { x: table.x + table.width, y: table.y + table.height / 2 }
-        );
-    }
-
     ctx.fillStyle = tableStyle.pocketColor;
-    pockets.forEach(p => {
+    getPockets().forEach(p => {
         ctx.beginPath();
-        ctx.arc(p.x, p.y, table.pocketRadius, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
         ctx.fill();
     });
 }
 
 function drawBall(ball) {
-    if (ball.type === 'cue') {
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
-        ctx.fill();
-    } else if (ball.type === '8') {
-        ctx.fillStyle = '#000';
-        ctx.beginPath();
-        ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
-        ctx.fill();
+    ctx.fillStyle = ball.type === 'cue' ? '#fff' : '#000';
 
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (ball.type === '8') {
         ctx.fillStyle = '#fff';
         ctx.beginPath();
         ctx.arc(ball.x, ball.y, BALL_RADIUS * 0.45, 0, Math.PI * 2);
@@ -205,7 +205,6 @@ function drawBall(ball) {
         ctx.fillText('8', ball.x, ball.y);
     }
 
-    // Draw drag ring if selected
     if (ball === selectedBall) {
         ctx.strokeStyle = 'rgba(255,255,255,0.8)';
         ctx.lineWidth = DRAG_RING_THICKNESS;
@@ -218,25 +217,25 @@ function drawBall(ball) {
 /* =========================
    Interaction
 ========================= */
-canvas.addEventListener('pointerdown', (e) => {
+canvas.addEventListener('pointerdown', e => {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
     const clickedBall = getBallAt(x, y);
 
-    // 1️⃣ Clicked a DIFFERENT ball → switch selection immediately
-    if (clickedBall && clickedBall !== selectedBall) {
+    // 1️⃣ Click directly on a ball → select it
+    if (clickedBall) {
         selectedBall = clickedBall;
         isDragging = true;
-        dragOffsetX = 0;
-        dragOffsetY = 0;
+        dragOffsetX = selectedBall.x - x;
+        dragOffsetY = selectedBall.y - y;
         canvas.setPointerCapture(e.pointerId);
         drawTable();
         return;
     }
 
-    // 2️⃣ Drag from drag ring (precision drag)
+    // 2️⃣ Click inside the drag ring of the selected ball → start precision drag
     if (selectedBall && isInsideDragZone(selectedBall, x, y)) {
         isDragging = true;
         dragOffsetX = selectedBall.x - x;
@@ -245,45 +244,37 @@ canvas.addEventListener('pointerdown', (e) => {
         return;
     }
 
-    // 3️⃣ Drag directly from the selected ball
-    if (
-        selectedBall &&
-        distance(x, y, selectedBall.x, selectedBall.y) <= BALL_RADIUS
-    ) {
-        isDragging = true;
-        dragOffsetX = 0;
-        dragOffsetY = 0;
-        canvas.setPointerCapture(e.pointerId);
-        return;
-    }
-
-    // 4️⃣ Clicked empty space → deselect
+    // 3️⃣ Clicked outside everything → deselect
     if (selectedBall) {
-        selectedBall = null;
-        drawTable();
+        deselectBall();
         return;
     }
 
-    // 5️⃣ Place new ball (menu-selected)
+    // 4️⃣ Place new ball from menu
     if (selectedBallType && isInsideFelt(x, y)) {
         placeBall(x, y);
     }
 });
 
-canvas.addEventListener('pointermove', (e) => {
+canvas.addEventListener('pointermove', e => {
     if (!isDragging || !selectedBall) return;
 
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left + dragOffsetX;
     const y = e.clientY - rect.top + dragOffsetY;
 
-    // Prevent overlap
     if (isOverlappingAnyBall(x, y, selectedBall)) return;
 
-    clampBallToFelt(selectedBall, x, y);
+    clampBallToRails(selectedBall, x, y);
+
+    if (isBallInPocket(selectedBall)) {
+        balls.splice(balls.indexOf(selectedBall), 1);
+        deselectBall();
+        return;
+    }
+
     drawTable();
 });
-
 
 canvas.addEventListener('pointerup', endDrag);
 canvas.addEventListener('pointercancel', endDrag);
@@ -291,15 +282,6 @@ canvas.addEventListener('pointercancel', endDrag);
 function endDrag(e) {
     isDragging = false;
     canvas.releasePointerCapture(e.pointerId);
-}
-
-function isInsideFelt(x, y) {
-    return (
-        x > table.x + BALL_RADIUS &&
-        x < table.x + table.width - BALL_RADIUS &&
-        y > table.y + BALL_RADIUS &&
-        y < table.y + table.height - BALL_RADIUS
-    );
 }
 
 /* =========================
@@ -316,15 +298,39 @@ window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
 /* =========================
-   Utility Functions
+   Utilities
 ========================= */
 function distance(x1, y1, x2, y2) {
     return Math.hypot(x2 - x1, y2 - y1);
 }
 
 function getBallAt(x, y) {
-    return balls.find(ball =>
-        distance(x, y, ball.x, ball.y) <= BALL_RADIUS
+    return balls.find(b => distance(x, y, b.x, b.y) <= BALL_RADIUS);
+}
+
+function placeBall(x, y) {
+    if (isOverlappingAnyBall(x, y)) return;
+    balls.push({ x, y, type: selectedBallType });
+    selectedBallType = null;
+    drawTable();
+}
+
+function clampBallToRails(ball, x, y) {
+    const minX = table.x - table.railWidth + BALL_RADIUS;
+    const maxX = table.x + table.width + table.railWidth - BALL_RADIUS;
+    const minY = table.y - table.railWidth + BALL_RADIUS;
+    const maxY = table.y + table.height + table.railWidth - BALL_RADIUS;
+
+    ball.x = Math.max(minX, Math.min(maxX, x));
+    ball.y = Math.max(minY, Math.min(maxY, y));
+}
+
+function isInsideFelt(x, y) {
+    return (
+        x > table.x + BALL_RADIUS &&
+        x < table.x + table.width - BALL_RADIUS &&
+        y > table.y + BALL_RADIUS &&
+        y < table.y + table.height - BALL_RADIUS
     );
 }
 
@@ -333,40 +339,50 @@ function isInsideDragZone(ball, x, y) {
     return d <= DRAG_RING_RADIUS + DRAG_RING_THICKNESS / 2;
 }
 
-function placeBall(x, y) {
-    if (isOverlappingAnyBall(x, y)) return;
-
-    balls.push({
-        x,
-        y,
-        type: selectedBallType
-    });
-
-    selectedBallType = null;
-    drawTable();
-}
-
-function clampBallToFelt(ball, x, y) {
-    ball.x = Math.max(
-        table.x + BALL_RADIUS,
-        Math.min(table.x + table.width - BALL_RADIUS, x)
-    );
-
-    ball.y = Math.max(
-        table.y + BALL_RADIUS,
-        Math.min(table.y + table.height - BALL_RADIUS, y)
-    );
-}
-
 function deselectBall() {
     selectedBall = null;
     isDragging = false;
     drawTable();
 }
 
-function isOverlappingAnyBall(x, y, ignoreBall = null) {
-    return balls.some(ball => {
-        if (ball === ignoreBall) return false;
-        return distance(x, y, ball.x, ball.y) < BALL_RADIUS * 2;
-    });
+function isOverlappingAnyBall(x, y, ignore = null) {
+    return balls.some(b => b !== ignore && distance(x, y, b.x, b.y) < BALL_RADIUS * 2);
+}
+
+/* =========================
+   Pockets
+========================= */
+function getPockets() {
+    const r = POCKET_RADIUS;
+    const offset = 2; // adjust as needed
+    const left   = table.x - r - offset;
+    const right  = table.x + table.width + r + offset;
+    const top    = table.y - r - offset;
+    const bottom = table.y + table.height + r + offset;
+
+    const pockets = [
+        { x: left,  y: top,    r },
+        { x: right, y: top,    r },
+        { x: left,  y: bottom, r },
+        { x: right, y: bottom, r }
+    ];
+
+    if (table.width >= table.height) {
+        pockets.push(
+            { x: table.x + table.width / 2, y: top,    r },
+            { x: table.x + table.width / 2, y: bottom, r }
+        );
+    } else {
+        pockets.push(
+            { x: left,  y: table.y + table.height / 2, r },
+            { x: right, y: table.y + table.height / 2, r }
+        );
+    }
+
+    return pockets;
+}
+
+
+function isBallInPocket(ball) {
+    return getPockets().some(p => distance(ball.x, ball.y, p.x, p.y) <= p.r);
 }
