@@ -14,8 +14,6 @@
 <div id="menuToggle">☰</div>
 
 <div id="menuPanel">
-    <div class="menu-item" data-menu="table">Table Design</div>
-
     <div class="menu-item" data-menu="balls">
         Pool Balls ▸
     </div>
@@ -23,6 +21,21 @@
     <div class="submenu" id="ballMenu">
         <div class="submenu-item" data-ball="cue">Cue Ball</div>
         <div class="submenu-item" data-ball="8">8 Ball</div>
+    </div>
+
+    <div class="menu-item" data-menu="table">
+        Table Design
+    </div>
+
+    <!-- Table size control -->
+    <div class="submenu" id="tableMenu">
+        <label class="submenu-label">
+            Table Size
+            <select id="tableSizeSelect">
+                <option value="7">7-Foot</option>
+                <option value="8">8-Foot</option>
+            </select>
+        </label>
     </div>
 </div>
   
