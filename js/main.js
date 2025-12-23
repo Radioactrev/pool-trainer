@@ -1,9 +1,10 @@
-const CODE_VERSION = 3; // manually increment whenever you update/upload code
+const CODE_VERSION = 4; // incremented
 
 /* =========================
    Canvas Setup
 ========================= */
 const canvas = document.getElementById('poolCanvas');
+const tableSizeSelect = document.getElementById('tableSizeSelect');
 const ctx = canvas.getContext('2d');
 
 /* =========================
@@ -16,14 +17,44 @@ let dragOffsetX = 0;
 let dragOffsetY = 0;
 
 const balls = [];
+let diamonds = [];
 
 /* =========================
    Constants
 ========================= */
-const BALL_RADIUS = 10;
-const DRAG_RING_RADIUS = BALL_RADIUS * 6;
-const DRAG_RING_THICKNESS = 6;
-const POCKET_RADIUS = 18;
+// Base 7-foot table reference
+
+const BASE_BALL_RADIUS = 10;
+const BASE_POCKET_RADIUS = 20;
+const BASE_RAIL_WIDTH = 40;
+
+// Balls across per table size
+const BALLS_ACROSS = {
+    7: 18.67,
+    8: 21.33,
+    9: 24
+};
+
+// Derived per-table variables
+let currentTableSize = 7;
+let tableScale = 1; // computed per table size + canvas
+let BALL_RADIUS = BASE_BALL_RADIUS;
+let POCKET_RADIUS = BASE_POCKET_RADIUS;
+let RAIL_WIDTH = BASE_RAIL_WIDTH;
+let DRAG_RING_RADIUS = BALL_RADIUS * 6;
+
+/* =========================
+   Table Geometry
+========================= */
+const table = {
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    railWidth: 0,
+    slatePath: null,
+    pockets: []
+};
 
 /* =========================
    Menu Setup
@@ -32,16 +63,21 @@ const menuToggle = document.getElementById('menuToggle');
 const menuPanel = document.getElementById('menuPanel');
 const ballMenu = document.getElementById('ballMenu');
 const poolBallMenuItem = document.querySelector('[data-menu="balls"]');
+const tableMenu = document.getElementById('tableMenu');
+const tableMenuItem = document.querySelector('[data-menu="table"]');
 
 menuToggle.addEventListener('click', () => {
     deselectBall();
-    menuPanel.style.display =
-        menuPanel.style.display === 'block' ? 'none' : 'block';
+    menuPanel.style.display = menuPanel.style.display === 'block' ? 'none' : 'block';
 });
 
 poolBallMenuItem.addEventListener('click', () => {
-    ballMenu.style.display =
-        ballMenu.style.display === 'block' ? 'none' : 'block';
+    ballMenu.style.display = ballMenu.style.display === 'block' ? 'none' : 'block';
+});
+
+tableMenuItem.addEventListener('click', () => {
+    tableMenu.style.display =
+        tableMenu.style.display === 'block' ? 'none' : 'block';
 });
 
 document.querySelectorAll('[data-ball]').forEach(item => {
@@ -52,101 +88,101 @@ document.querySelectorAll('[data-ball]').forEach(item => {
     });
 });
 
+tableSizeSelect.addEventListener('change', () => {
+    currentTableSize = parseInt(tableSizeSelect.value, 10);
+    setupTable();
+    drawTable();
+});
+
 /* =========================
-   Table Styling
+   Table Setup & Scaling
 ========================= */
-const tableStyle = {
-    feltColor: '#0a5d2f',
-    railColor: '#654321',
-    diamondColor: '#fff',
-    pocketColor: '#000'
-};
+function setupTable() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const edgePadding = 5;
+
+    // Include rails in the calculation
+    const maxRail = RAIL_WIDTH;
+    const usableW = canvas.width - 2 * (edgePadding + maxRail);
+    const usableH = canvas.height - 2 * (edgePadding + maxRail);
+
+    // Table aspect ratio (width / height = 1 / 2)
+    const tableAspect = 1 / 2;
+
+    // Start with full usable height
+    let tableH = usableH;
+    let tableW = tableH * tableAspect;
+
+    // If width exceeds usable width, scale down
+    if (tableW > usableW) {
+        tableW = usableW;
+        tableH = tableW / tableAspect;
+    }
+
+    table.width = tableW;
+    table.height = tableH;
+    table.x = (canvas.width - table.width) / 2;
+    table.y = (canvas.height - table.height) / 2;
+
+    // Everything scales relative to table width
+    const scale = table.width / (BASE_BALL_RADIUS * 2 * BALLS_ACROSS[7]);
+    BALL_RADIUS = BASE_BALL_RADIUS * scale * (BALLS_ACROSS[7] / BALLS_ACROSS[currentTableSize]);
+    POCKET_RADIUS = BASE_POCKET_RADIUS * scale * (BALLS_ACROSS[7] / BALLS_ACROSS[currentTableSize]);
+    RAIL_WIDTH = BASE_RAIL_WIDTH * scale * (BALLS_ACROSS[7] / BALLS_ACROSS[currentTableSize]);
+    DRAG_RING_RADIUS = BALL_RADIUS * 6;
+    table.railWidth = RAIL_WIDTH;
+
+    buildTableGeometry();
+    buildDiamonds();
+}
 
 /* =========================
    Table Geometry
 ========================= */
-const table = {
-    x: 0,
-    y: 0,
-    width: 0,
-    height: 0,
-    railWidth: POCKET_RADIUS * 2.5
-};
+function buildTableGeometry() {
+    const w = table.width;
+    const h = table.height;
+    const offset = 5;
 
-let diamonds = [];
+    table.slatePath = new Path2D();
+    table.slatePath.rect(table.x, table.y, w, h);
 
-/* =========================
-   Table Setup
-========================= */
-function setupTable() {
-    const edgePadding = 5;
-    const rail = table.railWidth;
+    const cp = POCKET_RADIUS;
+    const sp = POCKET_RADIUS * 0.9;
+    const cy = table.y + h / 2;
 
-    // Usable canvas space (excluding rail + padding)
-    const usableW = canvas.width - 2 * (edgePadding + rail);
-    const usableH = canvas.height - 2 * (edgePadding + rail);
-
-    // Fit table to usable space while keeping 2:1 aspect ratio
-    if (usableW >= usableH) {
-        table.width = usableW;
-        table.height = table.width / 2;
-        if (table.height > usableH) {
-            table.height = usableH;
-            table.width = table.height * 2;
-        }
-    } else {
-        table.height = usableH;
-        table.width = table.height / 2;
-        if (table.width > usableW) {
-            table.width = usableW;
-            table.height = table.width * 2;
-        }
-    }
-
-    // Center the table inside the usable canvas area
-    table.x = (canvas.width  - table.width)  / 2;
-    table.y = (canvas.height - table.height) / 2;
-
-    setupDiamonds();
+    table.pockets = [
+        { x: table.x - offset, y: table.y - offset, r: cp },
+        { x: table.x + w + offset, y: table.y - offset, r: cp },
+        { x: table.x - offset, y: table.y + h + offset, r: cp },
+        { x: table.x + w + offset, y: table.y + h + offset, r: cp },
+        { x: table.x - offset, y: cy, r: sp },
+        { x: table.x + w + offset, y: cy, r: sp }
+    ];
 }
 
-/* =========================
-   Diamonds
-========================= */
-function setupDiamonds() {
+function buildDiamonds() {
     diamonds = [];
+    const longSide = [1/4, 2/4, 3/4];
+    const shortSide = [1/8, 2/8, 3/8, 5/8, 6/8, 7/8];
 
-    const longSide = [1/8, 2/8, 3/8, 5/8, 6/8, 7/8];
-    const shortSide = [1/4, 2/4, 3/4];
-    const landscape = table.width >= table.height;
+    // Top & Bottom
+    longSide.forEach(p => {
+        diamonds.push(
+            { x: table.x + table.width * p, y: table.y - table.railWidth / 2 },
+            { x: table.x + table.width * p, y: table.y + table.height + table.railWidth / 2 }
+        );
+    });
 
-    if (landscape) {
-        longSide.forEach(p => {
-            diamonds.push(
-                { x: table.x + table.width * p, y: table.y - table.railWidth / 2 },
-                { x: table.x + table.width * p, y: table.y + table.height + table.railWidth / 2 }
-            );
-        });
-        shortSide.forEach(p => {
-            diamonds.push(
-                { x: table.x - table.railWidth / 2, y: table.y + table.height * p },
-                { x: table.x + table.width + table.railWidth / 2, y: table.y + table.height * p }
-            );
-        });
-    } else {
-        longSide.forEach(p => {
-            diamonds.push(
-                { x: table.x - table.railWidth / 2, y: table.y + table.height * p },
-                { x: table.x + table.width + table.railWidth / 2, y: table.y + table.height * p }
-            );
-        });
-        shortSide.forEach(p => {
-            diamonds.push(
-                { x: table.x + table.width * p, y: table.y - table.railWidth / 2 },
-                { x: table.x + table.width * p, y: table.y + table.height + table.railWidth / 2 }
-            );
-        });
-    }
+    // Left & Right
+    shortSide.forEach(p => {
+        diamonds.push(
+            { x: table.x - table.railWidth / 2, y: table.y + table.height * p },
+            { x: table.x + table.width + table.railWidth / 2, y: table.y + table.height * p }
+        );
+    });
 }
 
 /* =========================
@@ -155,43 +191,45 @@ function setupDiamonds() {
 function drawTable() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Felt
-    ctx.fillStyle = tableStyle.feltColor;
-    ctx.fillRect(table.x, table.y, table.width, table.height);
-
     // Rails
-    ctx.fillStyle = tableStyle.railColor;
-    ctx.fillRect(table.x - table.railWidth, table.y - table.railWidth, table.width + table.railWidth * 2, table.railWidth);
-    ctx.fillRect(table.x - table.railWidth, table.y + table.height, table.width + table.railWidth * 2, table.railWidth);
-    ctx.fillRect(table.x - table.railWidth, table.y, table.railWidth, table.height);
-    ctx.fillRect(table.x + table.width, table.y, table.railWidth, table.height);
+    ctx.fillStyle = '#654321';
+    drawRoundedRect(
+        table.x - RAIL_WIDTH,
+        table.y - RAIL_WIDTH,
+        table.width + RAIL_WIDTH * 2,
+        table.height + RAIL_WIDTH * 2,
+        30
+    );
 
-    // Diamonds
-    ctx.fillStyle = tableStyle.diamondColor;
-    diamonds.forEach(d => {
-        ctx.beginPath();
-        ctx.arc(d.x, d.y, 5, 0, Math.PI * 2);
-        ctx.fill();
-    });
-	
-	// Draw version indicator
-	ctx.fillStyle = 'rgba(255,255,255,0.8)';
-	ctx.font = '16px sans-serif';
-	ctx.textAlign = 'right';
-	ctx.textBaseline = 'top';
-	ctx.fillText(`v${CODE_VERSION}`, canvas.width - 10, 10);
+    // Felt
+    ctx.fillStyle = '#0a5d2f';
+    ctx.fill(table.slatePath);
 
-    drawPockets();
-    balls.forEach(drawBall);
-}
-
-function drawPockets() {
-    ctx.fillStyle = tableStyle.pocketColor;
-    getPockets().forEach(p => {
+    // Pockets
+    ctx.fillStyle = '#000';
+    table.pockets.forEach(p => {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
         ctx.fill();
     });
+
+    // Diamonds
+    ctx.fillStyle = '#fff';
+    diamonds.forEach(d => {
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, 5 * tableScale, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // Balls
+    balls.forEach(drawBall);
+
+    // Version
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.font = '16px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`v${CODE_VERSION}`, canvas.width - 10, 10);
 }
 
 function drawBall(ball) {
@@ -215,8 +253,11 @@ function drawBall(ball) {
     }
 
     if (ball === selectedBall) {
-        ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-        ctx.lineWidth = DRAG_RING_THICKNESS;
+        const overPocket = isDragging && isBallInPocket(ball);
+        ctx.strokeStyle = overPocket
+            ? 'rgba(255, 60, 60, 0.9)'
+            : 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = 6;
         ctx.beginPath();
         ctx.arc(ball.x, ball.y, DRAG_RING_RADIUS, 0, Math.PI * 2);
         ctx.stroke();
@@ -226,21 +267,17 @@ function drawBall(ball) {
 /* =========================
    Interaction
 ========================= */
-
 canvas.addEventListener('pointerdown', e => {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
     const clickedBall = getBallAt(x, y);
-
     if (clickedBall) {
         selectedBall = clickedBall;
         isDragging = true;
-
         dragOffsetX = x - selectedBall.x;
         dragOffsetY = y - selectedBall.y;
-
         canvas.setPointerCapture(e.pointerId);
         drawTable();
         return;
@@ -248,10 +285,8 @@ canvas.addEventListener('pointerdown', e => {
 
     if (selectedBall && isInsideDragZone(selectedBall, x, y)) {
         isDragging = true;
-
         dragOffsetX = x - selectedBall.x;
         dragOffsetY = y - selectedBall.y;
-
         canvas.setPointerCapture(e.pointerId);
         return;
     }
@@ -268,61 +303,58 @@ canvas.addEventListener('pointerdown', e => {
 
 canvas.addEventListener('pointermove', e => {
     if (!isDragging || !selectedBall) return;
-
     const rect = canvas.getBoundingClientRect();
-    const pointerX = e.clientX - rect.left;
-    const pointerY = e.clientY - rect.top;
-
-    const newX = pointerX - dragOffsetX;
-    const newY = pointerY - dragOffsetY;
-
-    const clamped = { x: newX, y: newY };
-    clampBallToRail(clamped, newX, newY);
-
-    if (isOverlappingAnyBall(clamped.x, clamped.y, selectedBall)) {
-        return;
-    }
-
-    selectedBall.x = clamped.x;
-    selectedBall.y = clamped.y;
-
-    if (isBallInPocket(selectedBall)) {
-        balls.splice(balls.indexOf(selectedBall), 1);
-        deselectBall();
-        return;
-    }
-
+    const x = e.clientX - rect.left - dragOffsetX;
+    const y = e.clientY - rect.top - dragOffsetY;
+    const resolved = resolveBallPosition(selectedBall, x, y);
+    if (isOverlappingAnyBall(resolved.x, resolved.y, selectedBall)) return;
+    selectedBall.x = resolved.x;
+    selectedBall.y = resolved.y;
     drawTable();
 });
-
-
 
 canvas.addEventListener('pointerup', endDrag);
 canvas.addEventListener('pointercancel', endDrag);
 
 function endDrag(e) {
+    if (!selectedBall) return;
+    if (isBallInPocket(selectedBall)) {
+        balls.splice(balls.indexOf(selectedBall), 1);
+        selectedBall = null;
+    }
     isDragging = false;
-    selectedBall = selectedBall; // keep it selected unless tapped outside
     canvas.releasePointerCapture(e.pointerId);
+    drawTable();
 }
-
 
 /* =========================
    Resize
 ========================= */
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+window.addEventListener('resize', () => {
     setupTable();
     drawTable();
-}
-
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
+});
+setupTable();
+drawTable();
 
 /* =========================
    Utilities
 ========================= */
+function drawRoundedRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+    ctx.fill();
+}
+
 function distance(x1, y1, x2, y2) {
     return Math.hypot(x2 - x1, y2 - y1);
 }
@@ -338,28 +370,28 @@ function placeBall(x, y) {
     drawTable();
 }
 
-function clampBallToRail(ball, x, y) {
-    const minX = table.x - table.railWidth + BALL_RADIUS;
-    const maxX = table.x + table.width + table.railWidth - BALL_RADIUS;
-    const minY = table.y - table.railWidth + BALL_RADIUS;
-    const maxY = table.y + table.height + table.railWidth - BALL_RADIUS;
+function resolveBallPosition(ball, x, y) {
+    let nx = x;
+    let ny = y;
+    const left = table.x;
+    const right = table.x + table.width;
+    const top = table.y;
+    const bottom = table.y + table.height;
 
-    ball.x = Math.max(minX, Math.min(maxX, x));
-    ball.y = Math.max(minY, Math.min(maxY, y));
+    if (nx - BALL_RADIUS < left && !isPointInAnyPocket(nx, ny)) nx = left + BALL_RADIUS;
+    if (nx + BALL_RADIUS > right && !isPointInAnyPocket(nx, ny)) nx = right - BALL_RADIUS;
+    if (ny - BALL_RADIUS < top && !isPointInAnyPocket(nx, ny)) ny = top + BALL_RADIUS;
+    if (ny + BALL_RADIUS > bottom && !isPointInAnyPocket(nx, ny)) ny = bottom - BALL_RADIUS;
+
+    return { x: nx, y: ny };
 }
 
 function isInsideFelt(x, y) {
-    return (
-        x > table.x + BALL_RADIUS &&
-        x < table.x + table.width - BALL_RADIUS &&
-        y > table.y + BALL_RADIUS &&
-        y < table.y + table.height - BALL_RADIUS
-    );
+    return ctx.isPointInPath(table.slatePath, x, y);
 }
 
 function isInsideDragZone(ball, x, y) {
-    const d = distance(x, y, ball.x, ball.y);
-    return d <= DRAG_RING_RADIUS + DRAG_RING_THICKNESS / 2;
+    return distance(x, y, ball.x, ball.y) <= DRAG_RING_RADIUS + 3;
 }
 
 function deselectBall() {
@@ -372,40 +404,10 @@ function isOverlappingAnyBall(x, y, ignore = null) {
     return balls.some(b => b !== ignore && distance(x, y, b.x, b.y) < BALL_RADIUS * 2);
 }
 
-/* =========================
-   Pockets
-========================= */
-function getPockets() {
-    const r = POCKET_RADIUS;
-    const offset = 2; // adjust as needed
-    const left   = table.x - r - offset;
-    const right  = table.x + table.width + r + offset;
-    const top    = table.y - r - offset;
-    const bottom = table.y + table.height + r + offset;
-
-    const pockets = [
-        { x: left,  y: top,    r },
-        { x: right, y: top,    r },
-        { x: left,  y: bottom, r },
-        { x: right, y: bottom, r }
-    ];
-
-    if (table.width >= table.height) {
-        pockets.push(
-            { x: table.x + table.width / 2, y: top,    r },
-            { x: table.x + table.width / 2, y: bottom, r }
-        );
-    } else {
-        pockets.push(
-            { x: left,  y: table.y + table.height / 2, r },
-            { x: right, y: table.y + table.height / 2, r }
-        );
-    }
-
-    return pockets;
+function isPointInAnyPocket(x, y) {
+    return table.pockets.some(p => distance(x, y, p.x, p.y) <= p.r - BALL_RADIUS * 0.5);
 }
 
-
 function isBallInPocket(ball) {
-    return getPockets().some(p => distance(ball.x, ball.y, p.x, p.y) <= p.r);
+    return table.pockets.some(p => distance(ball.x, ball.y, p.x, p.y) <= p.r);
 }
